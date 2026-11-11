@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import usuarios from "./usuarios.js";
 import "dotenv/config.js";
 
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -12,26 +11,55 @@ app.use(express.json());
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
   const usuario = usuarios.find(
-    (user) => user.username === username && user.password === password
+    (user) => user.username === username && user.password === password,
   );
 
   if (usuario) {
     const token = jwt.sign(
-      { 
+      {
         id: usuario.id,
-         username: usuario.username,
-        role: usuario.role
-      }, 
-      SECRET_KEY, { expiresIn: "1h" }
+        username: usuario.username,
+        role: usuario.role,
+      },
+      SECRET_KEY,
+      { expiresIn: "1h" },
     );
     res.status(201).json({ message: token });
   } else {
     res.status(401).json({ message: "usuário ou senha inválidos" });
   }
 });
- 
-    app.listen(PORT, () => {
-      console.log(`Servidor rodando na porta ${PORT}`);
-    });
 
-    
+// Middleware é uma função que tem acesso ao objeto de requisição (req), ao objeto de resposta (res)
+// e à próxima função de middleware no ciclo de requisição-resposta da aplicação
+const autenticateToken = (req, res, next) => {
+  const token = req.headers["authorization"]; //pegando o token do header da requisição
+ 
+  if (!token) {
+    return res.status(403).json({ message: "Token não fornecido" }); // se o token não for fornecido, retorna uma mensagem de erro com status 403
+  }
+ 
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: "Token inválido" }); // se o token for inválido, retorna uma mensagem de erro com status 403
+ 
+    req.user = user;
+    console.log(`Usuario autenticado: ${user}`); // se o token for válido, armazena as informações do usuário no objeto de requisição e chama a próxima função de middleware.
+ 
+    next(); // se o token for válido, chama a próxima função de middleware
+  });
+};
+ 
+app.get("/protected", autenticateToken, (req, res) => {
+  res.status(200).json({ message: "Acesso concedido a rota protegida" }); // se o token for válido, retorna uma mensagem de sucesso com status 200 e as informações do usuário
+});
+ 
+app.get("/admin", autenticateToken, (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message:"Acesso negado." }); // se o usuário não for admin, retorna uma mensagem de erro com status 403
+  }
+  res.status(200).json({message: "Área de administrador"}) // se o usuário for admin, retorna uma mensagem de sucesso com status 200
+});
+ 
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`); // mensagem de sucesso ao iniciar o servidor
+});
