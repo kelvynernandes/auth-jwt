@@ -59,7 +59,15 @@ app.get("/admin", autenticateToken, (req, res) => {
   }
   res.status(200).json({message: "Área de administrador"}) // se o usuário for admin, retorna uma mensagem de sucesso com status 200
 });
+
+app.get("/dono", autenticateToken, (req, res) => {
+  if (req.user.role !== "owner") {
+    return res.status(403).json({ message:"Acesso negado." }); // se o usuário não for owner, retorna uma mensagem de erro com status 403
+  }
+  res.status(200).json({message: "Área do dono"}) // se o usuário for admin, retorna uma mensagem de sucesso com status 200
+});
  
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`); // mensagem de sucesso ao iniciar o servidor
 });
+ 
